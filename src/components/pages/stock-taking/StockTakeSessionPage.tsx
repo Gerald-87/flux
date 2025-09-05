@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { PageHeader } from '../../ui/PageHeader';
 import { Card, CardContent } from '../../ui/Card';
 import { Button } from '../../ui/Button';
@@ -7,21 +7,33 @@ import { Input } from '../../ui/Input';
 import { mockData } from '../../../lib/mockData';
 import { Product } from '../../../types';
 import toast from 'react-hot-toast';
-import { Save, Ban, Search, CheckCircle } from 'lucide-react';
+import { Ban, Search, CheckCircle } from 'lucide-react';
 import { StockTakeReviewModal } from './StockTakeReviewModal';
 
 interface CountedItem extends Product {
     countedStock: number | '';
+    expectedStock: number;
 }
 
 export function StockTakeSessionPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [products, setProducts] = useState<CountedItem[]>(
-        mockData.products.map(p => ({ ...p, countedStock: '' }))
-    );
+    const routeLocation = useLocation();
+    const stockTakeLocation = routeLocation.state?.location || 'Main Inventory';
+
+    const [products, setProducts] = useState<CountedItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+    useEffect(() => {
+        setProducts(
+            mockData.products.map(p => ({ 
+                ...p, 
+                countedStock: '',
+                expectedStock: p.stockByLocation[stockTakeLocation] || 0
+            }))
+        );
+    }, [stockTakeLocation]);
 
     const handleCountChange = (productId: string, count: string) => {
         const newCount = count === '' ? '' : parseInt(count, 10);
@@ -41,10 +53,10 @@ export function StockTakeSessionPage() {
 
     const itemsWithVariance = useMemo(() => {
         return products
-            .filter(p => p.countedStock !== '' && p.countedStock !== p.stock)
+            .filter(p => p.countedStock !== '' && p.countedStock !== p.expectedStock)
             .map(p => ({
                 ...p,
-                variance: (p.countedStock as number) - p.stock,
+                variance: (p.countedStock as number) - p.expectedStock,
             }));
     }, [products]);
 
@@ -56,13 +68,26 @@ export function StockTakeSessionPage() {
 
     const handleFinalize = () => {
         // In a real app, this would send the data to the backend.
-        toast.success('Stock take finalized and inventory updated!');
+        // Here, we simulate updating the "global" mock data.
+        itemsWithVariance.forEach(item => {
+            const productIndex = mockData.products.findIndex(p => p.id === item.id);
+            if (productIndex !== -1) {
+                const oldLocationStock = mockData.products[productIndex].stockByLocation[stockTakeLocation] || 0;
+                mockData.products[productIndex].stockByLocation[stockTakeLocation] = item.countedStock as number;
+                mockData.products[productIndex].stock += ((item.countedStock as number) - oldLocationStock);
+            }
+        });
+
+        toast.success(`Stock take for ${stockTakeLocation} finalized. ${itemsWithVariance.length} items updated.`);
         navigate('/stock-taking');
     };
 
     return (
         <div>
-            <PageHeader title={`Stock Take: ${id}`} subtitle="Enter the physical count for each item.">
+            <PageHeader 
+                title={`Stock Take: ${id}`} 
+                subtitle={`Location: ${stockTakeLocation}. Enter the physical count for each item.`}
+            >
                 <div className="flex items-center space-x-2">
                     <Button variant="danger" onClick={handleCancel}>
                         <Ban className="h-4 w-4 mr-2" />
@@ -100,12 +125,12 @@ export function StockTakeSessionPage() {
                             </thead>
                             <tbody>
                                 {filteredProducts.map(product => {
-                                    const variance = product.countedStock !== '' ? (product.countedStock as number) - product.stock : null;
+                                    const variance = product.countedStock !== '' ? (product.countedStock as number) - product.expectedStock : null;
                                     return (
                                         <tr key={product.id} className="border-b hover:bg-gray-50">
                                             <td className="px-6 py-4 font-medium">{product.name}</td>
                                             <td className="px-6 py-4">{product.sku}</td>
-                                            <td className="px-6 py-4 text-center">{product.stock}</td>
+                                            <td className="px-6 py-4 text-center">{product.expectedStock}</td>
                                             <td className="px-6 py-4">
                                                 <Input 
                                                     type="number" 
@@ -116,9 +141,9 @@ export function StockTakeSessionPage() {
                                             </td>
                                             <td className={`px-6 py-4 text-center font-bold ${
                                                 variance === 0 ? 'text-green-600' : 
-                                                variance === null ? '' : 'text-red-600'
+                                                variance === null ? '' : variance && variance > 0 ? 'text-green-600' : 'text-red-600'
                                             }`}>
-                                                {variance}
+                                                {variance === null ? '-' : variance > 0 ? `+${variance}`: variance}
                                             </td>
                                         </tr>
                                     );
@@ -130,7 +155,7 @@ export function StockTakeSessionPage() {
             </Card>
             {isReviewModalOpen && (
                 <StockTakeReviewModal
-                    items={itemsWithVariance}
+                    items={itemsWithVariance.map(item => ({...item, stock: item.expectedStock}))}
                     onClose={() => setIsReviewModalOpen(false)}
                     onConfirm={handleFinalize}
                 />

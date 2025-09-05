@@ -1,11 +1,32 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { DashboardStats } from './DashboardStats';
 import { SalesChart } from './SalesChart';
 import { RecentSales } from './RecentSales';
 import { LowStockAlerts } from './LowStockAlerts';
 import { TopProducts } from './TopProducts';
+import { useAuth } from '../../hooks/useAuth';
+import { mockData } from '../../lib/mockData';
+import { Sale } from '../../types';
 
 export function Dashboard() {
+  const { user } = useAuth();
+
+  const scopedData = useMemo(() => {
+    if (!user) return { sales: [], products: [], customers: [] };
+    
+    const vendorId = user.vendorId;
+    let sales: Sale[] = mockData.sales.filter(s => s.vendorId === vendorId);
+    
+    if (user.role === 'cashier') {
+      sales = sales.filter(s => s.cashierId === user.id);
+    }
+    
+    const products = mockData.products.filter(p => p.vendorId === vendorId);
+    const customers = mockData.customers.filter(c => c.vendorId === vendorId);
+
+    return { sales, products, customers };
+  }, [user]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -15,19 +36,18 @@ export function Dashboard() {
         </div>
       </div>
 
-      <DashboardStats />
+      <DashboardStats sales={scopedData.sales} customers={scopedData.customers} products={scopedData.products} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <SalesChart />
-        </div>
-        <div className="space-y-6">
-          <LowStockAlerts />
-          <TopProducts />
+      <div className="grid grid-cols-1 gap-6">
+        <SalesChart sales={scopedData.sales} />
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <LowStockAlerts products={scopedData.products} />
+            <TopProducts sales={scopedData.sales} products={scopedData.products} />
         </div>
       </div>
 
-      <RecentSales />
+      <RecentSales sales={scopedData.sales} />
     </div>
   );
 }

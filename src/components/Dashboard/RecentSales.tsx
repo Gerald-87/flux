@@ -1,53 +1,30 @@
 import React from 'react';
 import { Eye, Download } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { Sale } from '../../types';
+import { mockData } from '../../lib/mockData';
+import { useAuth } from '../../hooks/useAuth';
 
-const recentSales = [
-  {
-    id: 'RCP-1701234567-abc123',
-    customer: 'John Doe',
-    items: 3,
-    total: 299.99,
-    paymentMethod: 'Card',
-    cashier: 'Alice Johnson',
-    createdAt: new Date('2025-01-26T10:30:00')
-  },
-  {
-    id: 'RCP-1701234566-def456',
-    customer: 'Jane Smith',
-    items: 1,
-    total: 89.99,
-    paymentMethod: 'Cash',
-    cashier: 'Bob Wilson',
-    createdAt: new Date('2025-01-26T10:15:00')
-  },
-  {
-    id: 'RCP-1701234565-ghi789',
-    customer: 'Mike Johnson',
-    items: 5,
-    total: 455.50,
-    paymentMethod: 'Mobile',
-    cashier: 'Alice Johnson',
-    createdAt: new Date('2025-01-26T09:45:00')
-  },
-  {
-    id: 'RCP-1701234564-jkl012',
-    customer: 'Sarah Davis',
-    items: 2,
-    total: 129.98,
-    paymentMethod: 'Card',
-    cashier: 'Charlie Brown',
-    createdAt: new Date('2025-01-26T09:30:00')
-  }
-];
+interface RecentSalesProps {
+    sales: Sale[];
+}
 
-const paymentMethodColors = {
-  Card: 'bg-blue-100 text-blue-800',
-  Cash: 'bg-green-100 text-green-800',
-  Mobile: 'bg-purple-100 text-purple-800'
-};
+export function RecentSales({ sales }: RecentSalesProps) {
+  const { user } = useAuth();
+  const cashiers = mockData.cashiers.filter(c => c.vendorId === user?.vendorId);
+  const customers = mockData.customers.filter(c => c.vendorId === user?.vendorId);
+  
+  const recentSales = [...sales]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
 
-export function RecentSales() {
+  const paymentMethodColors: { [key: string]: string } = {
+    card: 'bg-blue-100 text-blue-800',
+    cash: 'bg-green-100 text-green-800',
+    mobile: 'bg-purple-100 text-purple-800',
+    loyalty: 'bg-yellow-100 text-yellow-800'
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-6 border-b border-gray-200">
@@ -81,9 +58,11 @@ export function RecentSales() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Payment
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Cashier
-              </th>
+              {user?.role === 'vendor' && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cashier
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Time
               </th>
@@ -96,13 +75,13 @@ export function RecentSales() {
             {recentSales.map((sale) => (
               <tr key={sale.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{sale.id}</div>
+                  <div className="text-sm font-medium text-gray-900">{sale.receiptNumber}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{sale.customer}</div>
+                  <div className="text-sm text-gray-900">{customers.find(c => c.id === sale.customerId)?.name || 'N/A'}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{sale.items}</div>
+                  <div className="text-sm text-gray-900">{sale.items.length}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
@@ -110,18 +89,22 @@ export function RecentSales() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    paymentMethodColors[sale.paymentMethod as keyof typeof paymentMethodColors]
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize ${
+                    paymentMethodColors[sale.paymentMethod]
                   }`}>
                     {sale.paymentMethod}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{sale.cashier}</div>
-                </td>
+                {user?.role === 'vendor' && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                            {cashiers.find(c => c.id === sale.cashierId)?.name || 'N/A'}
+                        </div>
+                    </td>
+                )}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-500">
-                    {formatDate(sale.createdAt)}
+                    {formatDate(new Date(sale.createdAt))}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

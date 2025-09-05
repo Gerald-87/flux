@@ -5,10 +5,11 @@ import { formatCurrency } from '../../lib/utils';
 
 interface ProductSearchProps {
   products: Product[];
-  onAddToCart: (product: Product, quantity?: number) => void;
+  onProductSelect: (product: Product) => void;
+  onAddToCart: (product: Product) => void;
 }
 
-export function ProductSearch({ products, onAddToCart }: ProductSearchProps) {
+export function ProductSearch({ products, onProductSelect, onAddToCart }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -21,6 +22,14 @@ export function ProductSearch({ products, onAddToCart }: ProductSearchProps) {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     return matchesSearch && matchesCategory && product.isActive;
   });
+
+  const handleProductClick = (product: Product) => {
+    if (product.variants && product.variants.length > 0) {
+        onProductSelect(product);
+    } else {
+        onAddToCart(product);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -55,7 +64,7 @@ export function ProductSearch({ products, onAddToCart }: ProductSearchProps) {
           <div
             key={product.id}
             className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer"
-            onClick={() => onAddToCart(product)}
+            onClick={() => handleProductClick(product)}
           >
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
@@ -81,7 +90,7 @@ export function ProductSearch({ products, onAddToCart }: ProductSearchProps) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddToCart(product);
+                  handleProductClick(product);
                 }}
                 className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
               >

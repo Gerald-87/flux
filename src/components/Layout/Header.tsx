@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, Settings, Wifi, WifiOff } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings, Wifi, WifiOff, LogIn } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useOfflineSync } from '../../hooks/useOfflineSync';
 import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export function Header() {
-  const { user, logout } = useAuth();
+  const { user, users, login, logout } = useAuth();
   const { isOnline, pendingActions } = useOfflineSync();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -32,6 +33,18 @@ export function Header() {
     logout();
     navigate('/login');
   };
+  
+  const handleLoginAsVendor = () => {
+    if (user?.role === 'cashier' && user.vendorId) {
+        const vendorUser = users.find(u => u.id === user.vendorId && u.role === 'vendor');
+        if (vendorUser && vendorUser.password) {
+            toast.success(`Switching to ${vendorUser.name}'s account...`);
+            login({ email: vendorUser.email, password: vendorUser.password });
+        } else {
+            toast.error('Could not find vendor account to switch to.');
+        }
+    }
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
@@ -50,6 +63,17 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center space-x-4">
+          {/* Login as Vendor */}
+          {user?.role === 'cashier' && (
+            <button
+                onClick={handleLoginAsVendor}
+                className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 font-medium"
+            >
+                <LogIn className="h-4 w-4" />
+                <span>Login as Vendor</span>
+            </button>
+          )}
+
           {/* Connection Status */}
           <div className={cn(
             "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium",

@@ -1,50 +1,63 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { Sale, Customer, Product } from '../../types';
+import { isToday } from 'date-fns';
 
-const statsData = [
-  {
-    title: 'Today\'s Sales',
-    value: 284750.50,
-    change: '+12.5%',
-    changeType: 'increase' as const,
-    icon: DollarSign,
-    color: 'blue'
-  },
-  {
-    title: 'Total Orders',
-    value: 127,
-    change: '+8.2%',
-    changeType: 'increase' as const,
-    icon: ShoppingCart,
-    color: 'green'
-  },
-  {
-    title: 'New Customers',
-    value: 23,
-    change: '-2.1%',
-    changeType: 'decrease' as const,
-    icon: Users,
-    color: 'purple'
-  },
-  {
-    title: 'Low Stock Items',
-    value: 8,
-    change: '+3',
-    changeType: 'increase' as const,
-    icon: Package,
-    color: 'red'
-  }
-];
+interface DashboardStatsProps {
+    sales: Sale[];
+    customers: Customer[];
+    products: Product[];
+}
 
-const colorClasses = {
-  blue: 'bg-blue-100 text-blue-600',
-  green: 'bg-green-100 text-green-600',
-  purple: 'bg-purple-100 text-purple-600',
-  red: 'bg-red-100 text-red-600'
-};
+export function DashboardStats({ sales, customers, products }: DashboardStatsProps) {
+    const todaySales = sales.filter(s => isToday(s.createdAt)).reduce((sum, s) => sum + s.total, 0);
+    const todayOrders = sales.filter(s => isToday(s.createdAt)).length;
+    const newCustomers = customers.filter(c => isToday(c.createdAt)).length;
+    const lowStockItems = products.filter(p => p.stock < p.minStock).length;
 
-export function DashboardStats() {
+    const statsData = [
+      {
+        title: 'Today\'s Sales',
+        value: todaySales,
+        change: '+12.5%',
+        changeType: 'increase' as const,
+        icon: DollarSign,
+        color: 'blue'
+      },
+      {
+        title: 'Today\'s Orders',
+        value: todayOrders,
+        change: '+8.2%',
+        changeType: 'increase' as const,
+        icon: ShoppingCart,
+        color: 'green'
+      },
+      {
+        title: 'New Customers',
+        value: newCustomers,
+        change: '-2.1%',
+        changeType: 'decrease' as const,
+        icon: Users,
+        color: 'purple'
+      },
+      {
+        title: 'Low Stock Items',
+        value: lowStockItems,
+        change: '+3',
+        changeType: 'increase' as const,
+        icon: Package,
+        color: 'red'
+      }
+    ];
+
+    const colorClasses = {
+      blue: 'bg-blue-100 text-blue-600',
+      green: 'bg-green-100 text-green-600',
+      purple: 'bg-purple-100 text-purple-600',
+      red: 'bg-red-100 text-red-600'
+    };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {statsData.map((stat) => {

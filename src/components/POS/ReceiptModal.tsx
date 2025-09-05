@@ -1,8 +1,6 @@
 import React, { useRef } from 'react';
-import { X, Download, Printer } from 'lucide-react';
+import { X, Printer } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface ReceiptModalProps {
   sale: any;
@@ -17,33 +15,6 @@ export function ReceiptModal({ sale, customer, onClose }: ReceiptModalProps) {
     window.print();
   };
 
-  const handleDownload = async () => {
-    if (!receiptRef.current) return;
-
-    const canvas = await html2canvas(receiptRef.current);
-    const imgData = canvas.toDataURL('image/png');
-    
-    const pdf = new jsPDF();
-    const imgWidth = 210;
-    const pageHeight = 295;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    
-    let position = 0;
-    
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-    
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    
-    pdf.save(`receipt-${sale.receiptNumber}.pdf`);
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-full max-w-md max-h-screen overflow-y-auto">
@@ -51,12 +22,6 @@ export function ReceiptModal({ sale, customer, onClose }: ReceiptModalProps) {
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Receipt</h3>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={handleDownload}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <Download className="h-4 w-4" />
-            </button>
             <button
               onClick={handlePrint}
               className="p-2 text-gray-400 hover:text-gray-600 transition-colors"

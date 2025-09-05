@@ -1,30 +1,37 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Sale } from '../../types';
+import { format, subDays, subMonths } from 'date-fns';
 
-const salesData = [
-  { name: 'Mon', sales: 2400, orders: 24 },
-  { name: 'Tue', sales: 1398, orders: 18 },
-  { name: 'Wed', sales: 9800, orders: 45 },
-  { name: 'Thu', sales: 3908, orders: 32 },
-  { name: 'Fri', sales: 4800, orders: 38 },
-  { name: 'Sat', sales: 3800, orders: 35 },
-  { name: 'Sun', sales: 4300, orders: 41 }
-];
+interface SalesChartProps {
+    sales: Sale[];
+}
 
-const monthlyData = [
-  { name: 'Jan', sales: 45000, orders: 450 },
-  { name: 'Feb', sales: 52000, orders: 520 },
-  { name: 'Mar', sales: 48000, orders: 480 },
-  { name: 'Apr', sales: 61000, orders: 610 },
-  { name: 'May', sales: 55000, orders: 550 },
-  { name: 'Jun', sales: 67000, orders: 670 }
-];
-
-export function SalesChart() {
+export function SalesChart({ sales }: SalesChartProps) {
   const [period, setPeriod] = useState<'week' | 'month'>('week');
   const [metric, setMetric] = useState<'sales' | 'orders'>('sales');
 
-  const data = period === 'week' ? salesData : monthlyData;
+  const weeklyData = Array.from({ length: 7 }).map((_, i) => {
+    const date = subDays(new Date(), 6 - i);
+    const daySales = sales.filter(s => format(s.createdAt, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+    return {
+      name: format(date, 'E'),
+      sales: daySales.reduce((sum, s) => sum + s.total, 0),
+      orders: daySales.length,
+    };
+  });
+
+  const monthlyData = Array.from({ length: 6 }).map((_, i) => {
+    const date = subMonths(new Date(), 5 - i);
+    const monthSales = sales.filter(s => format(s.createdAt, 'yyyy-MM') === format(date, 'yyyy-MM'));
+    return {
+      name: format(date, 'MMM'),
+      sales: monthSales.reduce((sum, s) => sum + s.total, 0),
+      orders: monthSales.length,
+    };
+  });
+
+  const data = period === 'week' ? weeklyData : monthlyData;
 
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
@@ -36,7 +43,7 @@ export function SalesChart() {
             onChange={(e) => setMetric(e.target.value as 'sales' | 'orders')}
             className="text-sm border border-gray-300 rounded-lg px-3 py-1"
           >
-            <option value="sales">Sales ($)</option>
+            <option value="sales">Sales (K)</option>
             <option value="orders">Orders</option>
           </select>
           <select

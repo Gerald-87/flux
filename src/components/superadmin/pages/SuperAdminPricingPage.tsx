@@ -1,12 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PageHeader } from '../../ui/PageHeader';
 import { Card, CardContent, CardHeader } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Check, Edit } from 'lucide-react';
 import { formatCurrency } from '../../../lib/utils';
-import { plans } from '../../../lib/plans';
+import { plans as initialPlans } from '../../../lib/plans';
+import { Plan } from '../../../types';
+import { PlanFormModal } from './PlanFormModal';
+import toast from 'react-hot-toast';
 
 export function SuperAdminPricingPage() {
+  const [plans, setPlans] = useState<Plan[]>(initialPlans);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+
+  const handleEditPlan = (plan: Plan) => {
+    setEditingPlan(plan);
+    setIsModalOpen(true);
+  };
+
+  const handleSavePlan = (updatedPlan: Plan) => {
+    setPlans(plans.map(p => p.id === updatedPlan.id ? updatedPlan : p));
+    toast.success(`${updatedPlan.name} plan updated successfully!`);
+    setIsModalOpen(false);
+    setEditingPlan(null);
+  };
+
   return (
     <div>
       <PageHeader
@@ -40,7 +59,7 @@ export function SuperAdminPricingPage() {
               </ul>
             </CardContent>
             <div className="p-6 mt-auto">
-              <Button variant="secondary" className="w-full">
+              <Button variant="secondary" className="w-full" onClick={() => handleEditPlan(plan)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Plan
               </Button>
@@ -48,6 +67,13 @@ export function SuperAdminPricingPage() {
           </Card>
         ))}
       </div>
+      {isModalOpen && editingPlan && (
+        <PlanFormModal
+            plan={editingPlan}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSavePlan}
+        />
+      )}
     </div>
   );
 }

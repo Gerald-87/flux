@@ -1,50 +1,10 @@
-import { useState, useEffect } from 'react';
-import { User } from '../types';
-import { useLocalStorage } from './useLocalStorage';
+import { useContext } from 'react';
+// This file is kept for simplicity, but its logic has been moved to AuthContext.
+// We will re-export the context hook from here.
 
-const vendorUser: User = {
-  id: 'mock-user-vendor-1',
-  email: 'vendor@example.com',
-  role: 'vendor',
-  vendorId: 'vendor1',
-  name: 'Flux Demo User',
-  isActive: true,
-  createdAt: new Date(),
-};
+// To use the auth context, import from this file:
+// import { useAuth } from '../hooks/useAuth';
 
-const superAdminUser: User = {
-    id: 'mock-user-superadmin-1',
-    email: 'superadmin@example.com',
-    role: 'superadmin',
-    name: 'Super Admin',
-    isActive: true,
-    createdAt: new Date(),
-};
-
-export function useAuth() {
-  const [user, setUser] = useLocalStorage<User | null>('fluxpos-user', null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // This simulates checking an auth session on component mount
-    setLoading(false);
-  }, []);
-
-  const login = (role: 'vendor' | 'superadmin') => {
-    setLoading(true);
-    setTimeout(() => { // Simulate API call
-      if (role === 'vendor') {
-        setUser(vendorUser);
-      } else {
-        setUser(superAdminUser);
-      }
-      setLoading(false);
-    }, 500);
-  };
-
-  const logout = () => {
-    setUser(null);
-  };
-
-  return { user, loading, login, logout };
-}
+// The actual implementation is in `../contexts/AuthContext.tsx`
+// This is a common pattern to avoid circular dependencies and keep hook usage clean.
+export { useAuth } from '../contexts/AuthContext';

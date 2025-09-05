@@ -1,58 +1,87 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { PageHeader } from '../ui/PageHeader';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Search, Download, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Search, Download, Upload, Edit, Trash2, MoreVertical, Layers } from 'lucide-react';
 import { mockData } from '../../lib/mockData';
 import { Product } from '../../types';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, exportToCsv } from '../../lib/utils';
 import { ProductFormModal } from './products/ProductFormModal';
 import toast from 'react-hot-toast';
+import { Pagination } from '../ui/Pagination';
+import { ProductImportModal } from './products/ProductImportModal';
+import { useAuth } from '../../hooks/useAuth';
 
 export function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(mockData.products);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const { user } = useAuth();
+  const [allProducts, setAllProducts] = useState<Product[]>(mockData.products);
+  
+  const products = useMemo(() => {
+    if (!user?.vendorId) return [];
+    return allProducts.filter(p => p.vendorId === user.vendorId);
+  }, [allProducts, user]);
 
-  const handleAddProduct = () => {
-    setEditingProduct(null);
-    setIsModalOpen(true);
-  };
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    setIsModalOpen(true);
+    setIsFormModalOpen(true);
   };
 
   const handleDeleteProduct = (productId: string) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter(p => p.id !== productId));
+    if (window.confirm('Are you sure you want to delete this product? This action is permanent.')) {
+      setAllProducts(allProducts.filter(p => p.id !== productId));
       toast.success('Product deleted successfully!');
     }
   };
 
   const handleSaveProduct = (product: Product) => {
     if (editingProduct) {
-      // Update existing product
-      setProducts(products.map(p => (p.id === product.id ? product : p)));
+      setAllProducts(allProducts.map(p => (p.id === product.id ? product : p)));
       toast.success('Product updated successfully!');
-    } else {
-      // Add new product
-      setProducts([{ ...product, id: new Date().toISOString() }, ...products]);
-      toast.success('Product added successfully!');
     }
-    setIsModalOpen(false);
+    // Note: Adding new products is now handled through the Purchases workflow.
+    setIsFormModalOpen(false);
+  };
+  
+  const handleImportProducts = (newProducts: Product[]) => {
+    const productsForThisVendor = newProducts.map(p => ({ ...p, vendorId: user!.vendorId! }));
+    setAllProducts(prev => [...productsForThisVendor, ...prev]);
+    toast.success(`${newProducts.length} products imported successfully!`);
+    setIsImportModalOpen(false);
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleExportProducts = () => {
+    const dataToExport = products.map(p => ({
+        ...p,
+        variants: p.variants?.map(v => `${v.name}:${v.value}`).join('; ')
+    }));
+    exportToCsv(dataToExport, 'products_export');
+    toast.success('Products exported successfully!');
+  };
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
+
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredProducts, currentPage]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   return (
     <div>
-      <PageHeader title="Products" subtitle={`Manage your ${products.length} products.`}>
+      <PageHeader title="Products" subtitle={`View and manage your ${products.length} products.`}>
         <div className="flex items-center space-x-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -64,13 +93,13 @@ export function ProductsPage() {
               className="pl-10 pr-4 py-2 border rounded-lg"
             />
           </div>
-          <Button variant="secondary">
-            <Download className="h-4 w-4 mr-2" />
-            Import/Export
+          <Button variant="secondary" onClick={() => setIsImportModalOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import
           </Button>
-          <Button onClick={handleAddProduct}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
+          <Button variant="secondary" onClick={handleExportProducts}>
+            <Download className="h-4 w-4 mr-2" />
+            Export
           </Button>
         </div>
       </PageHeader>
@@ -91,9 +120,18 @@ export function ProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map(product => (
+                {paginatedProducts.map(product => (
                   <tr key={product.id} className="border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">{product.name}</td>
+                    <td className="px-6 py-4 font-medium">
+                        <div className="flex items-center">
+                            {product.name}
+                            {product.variants && product.variants.length > 0 && (
+                                <span className="ml-2 text-blue-500" title={`${product.variants.length} variants`}>
+                                    <Layers className="h-4 w-4" />
+                                </span>
+                            )}
+                        </div>
+                    </td>
                     <td className="px-6 py-4">{product.sku}</td>
                     <td className="px-6 py-4">{product.category}</td>
                     <td className="px-6 py-4">{formatCurrency(product.price)}</td>
@@ -122,14 +160,26 @@ export function ProductsPage() {
               </tbody>
             </table>
           </div>
+           <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </CardContent>
       </Card>
       
-      {isModalOpen && (
+      {isFormModalOpen && (
         <ProductFormModal
           product={editingProduct}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => setIsFormModalOpen(false)}
           onSave={handleSaveProduct}
+        />
+      )}
+
+      {isImportModalOpen && (
+        <ProductImportModal
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={handleImportProducts}
         />
       )}
     </div>

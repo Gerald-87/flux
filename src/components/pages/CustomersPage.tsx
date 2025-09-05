@@ -1,20 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { PageHeader } from '../ui/PageHeader';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Search, Download, Plus, Eye } from 'lucide-react';
 import { mockData } from '../../lib/mockData';
 import { Customer } from '../../types';
+import { Pagination } from '../ui/Pagination';
+import { CustomerFormModal } from './customers/CustomerFormModal';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
 
 export function CustomersPage() {
-  const [customers] = useState<Customer[]>(mockData.customers);
-  const [searchTerm, setSearchTerm] = useState('');
+  const { user } = useAuth();
+  const [allCustomers, setAllCustomers] = useState<Customer[]>(mockData.customers);
+  
+  const customers = useMemo(() => {
+    if (!user?.vendorId) return [];
+    return allCustomers.filter(c => c.vendorId === user.vendorId);
+  }, [allCustomers, user]);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone?.includes(searchTerm)
-  );
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const itemsPerPage = 10;
+
+  const handleAddCustomer = () => {
+    setEditingCustomer(null);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveCustomer = (customer: Customer) => {
+    if (editingCustomer) {
+      setAllCustomers(allCustomers.map(c => (c.id === customer.id ? customer : c)));
+      toast.success('Customer updated successfully');
+    } else {
+      const newCustomer = { ...customer, id: `cust-${Date.now()}`, vendorId: user!.vendorId! };
+      setAllCustomers([newCustomer, ...allCustomers]);
+      toast.success('Customer added successfully');
+    }
+    setIsModalOpen(false);
+  };
+
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(customer =>
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.phone?.includes(searchTerm)
+    );
+  }, [customers, searchTerm]);
+
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredCustomers, currentPage]);
+
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
 
   return (
     <div>
@@ -34,7 +75,7 @@ export function CustomersPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button>
+          <Button onClick={handleAddCustomer}>
             <Plus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
@@ -56,7 +97,7 @@ export function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map(customer => (
+                {paginatedCustomers.map(customer => (
                   <tr key={customer.id} className="border-b hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium">{customer.name}</td>
                     <td className="px-6 py-4">{customer.email}</td>
@@ -77,8 +118,20 @@ export function CustomersPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </CardContent>
       </Card>
+      {isModalOpen && (
+        <CustomerFormModal
+          customer={editingCustomer}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveCustomer}
+        />
+      )}
     </div>
   );
 }

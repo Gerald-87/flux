@@ -24,8 +24,17 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (!allowedRoles.includes(user.role)) {
-    // Redirect to a 'not authorized' page or back to login
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Subscription check for vendors
+  if (user.role === 'vendor' && user.subscriptionExpiry) {
+    const expiryDate = new Date(user.subscriptionExpiry);
+    if (expiryDate < new Date()) {
+      if (location.pathname !== '/subscription') {
+        return <Navigate to="/subscription" replace />;
+      }
+    }
   }
 
   return children;

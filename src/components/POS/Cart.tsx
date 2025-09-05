@@ -5,8 +5,8 @@ import { formatCurrency } from '../../lib/utils';
 
 interface CartProps {
   items: SaleItem[];
-  onUpdateItem: (productId: string, updates: Partial<SaleItem>) => void;
-  onRemoveItem: (productId: string) => void;
+  onUpdateItem: (itemId: string, updates: Partial<SaleItem>) => void;
+  onRemoveItem: (itemId: string) => void;
   onClear: () => void;
   subtotal: number;
   tax: number;
@@ -32,46 +32,49 @@ export function Cart({ items, onUpdateItem, onRemoveItem, onClear, subtotal, tax
       </div>
 
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {items.map(item => (
-          <div key={item.productId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            <div className="flex-1">
-              <h4 className="font-medium text-gray-900 text-sm">{item.name}</h4>
-              <p className="text-xs text-gray-500">{item.sku}</p>
-              <p className="text-sm font-medium text-blue-600">
-                {formatCurrency(item.price)} each
-              </p>
-            </div>
+        {items.map(item => {
+          const itemId = item.variantId || item.productId;
+          return (
+            <div key={itemId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <h4 className="font-medium text-gray-900 text-sm">{item.name}</h4>
+                <p className="text-xs text-gray-500">{item.sku}</p>
+                <p className="text-sm font-medium text-blue-600">
+                  {formatCurrency(item.price)} each
+                </p>
+              </div>
 
-            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => onUpdateItem(itemId, { quantity: Math.max(1, item.quantity - 1) })}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                <button
+                  onClick={() => onUpdateItem(itemId, { quantity: item.quantity + 1 })}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="text-right">
+                <p className="text-sm font-bold text-gray-900">
+                  {formatCurrency(item.total)}
+                </p>
+              </div>
+
               <button
-                onClick={() => onUpdateItem(item.productId, { quantity: Math.max(1, item.quantity - 1) })}
-                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => onRemoveItem(itemId)}
+                className="p-1 text-red-400 hover:text-red-600 transition-colors"
               >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-              <button
-                onClick={() => onUpdateItem(item.productId, { quantity: item.quantity + 1 })}
-                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
+                <X className="h-4 w-4" />
               </button>
             </div>
-
-            <div className="text-right">
-              <p className="text-sm font-bold text-gray-900">
-                {formatCurrency(item.total)}
-              </p>
-            </div>
-
-            <button
-              onClick={() => onRemoveItem(item.productId)}
-              className="p-1 text-red-400 hover:text-red-600 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {items.length === 0 && (

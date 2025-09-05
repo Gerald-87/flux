@@ -1,13 +1,20 @@
 export interface User {
   id: string;
   email: string;
+  password?: string;
   role: 'superadmin' | 'vendor' | 'cashier';
   vendorId?: string;
   name: string;
   avatar?: string;
   isActive: boolean;
+  terminalId?: string;
   createdAt: Date;
   lastLogin?: Date;
+  // Added for easier access in context
+  subscriptionPlan?: 'trial' | 'basic' | 'standard' | 'premium';
+  subscriptionStatus?: 'trialing' | 'active' | 'inactive' | 'suspended';
+  subscriptionExpiry?: Date;
+  isApproved?: boolean;
 }
 
 export interface Vendor {
@@ -47,7 +54,17 @@ export interface NotificationSettings {
   lowStockThreshold: number;
   emailNotifications: boolean;
   smsNotifications: boolean;
-  dailyReports: boolean;
+  dailyReports: true;
+}
+
+export interface ProductVariant {
+  id: string;
+  name: string; // e.g., "Size", "Color"
+  value: string; // e.g., "M", "Red"
+  priceModifier: number; // e.g., 10 for +$10, -5 for -$5
+  stock: number;
+  sku: string;
+  barcode?: string;
 }
 
 export interface Product {
@@ -55,13 +72,14 @@ export interface Product {
   vendorId: string;
   name: string;
   description: string;
-  sku: string;
-  barcode: string;
+  sku: string; // Base SKU
+  barcode: string; // Base barcode
   category: string;
   brand: string;
-  price: number;
+  price: number; // Base price
   costPrice: number;
-  stock: number;
+  stock: number; // Total stock across all locations
+  stockByLocation: { [locationId: string]: number }; // e.g., { 'main': 100, 'terminal1': 10 }
   minStock: number;
   maxStock: number;
   unit: string;
@@ -75,17 +93,6 @@ export interface Product {
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface ProductVariant {
-  id: string;
-  name: string; // e.g., "Size", "Color"
-  type: 'size' | 'color' | 'style' | 'other';
-  value: string; // e.g., "M", "Red"
-  price: number; // Can be an override or modifier
-  stock: number;
-  sku: string;
-  barcode: string;
 }
 
 export interface Customer {
@@ -131,9 +138,9 @@ export interface Sale {
 export interface SaleItem {
   productId: string;
   variantId?: string;
-  name: string;
+  name: string; // "Product Name (Variant Value)"
   sku: string;
-  price: number;
+  price: number; // Final price of the item (base + modifier)
   quantity: number;
   discount: number;
   total: number;
@@ -150,6 +157,8 @@ export interface StockMovement {
   notes?: string;
   createdAt: Date;
   createdBy: string; // User ID
+  from?: string; // e.g., "Main Inventory"
+  to?: string; // e.g., "Terminal 1"
 }
 
 export interface Supplier {
@@ -206,14 +215,14 @@ export interface AuditLog {
 
 export interface Notification {
   id: string;
-  vendorId: string;
-  userId?: string; // For user-specific notifications
-  type: 'low_stock' | 'sale' | 'system' | 'subscription';
+  type: 'low_stock' | 'purchase_received' | 'stock_take_complete' | 'system' | 'transfer_complete';
   title: string;
   message: string;
   isRead: boolean;
   createdAt: Date;
+  link?: string;
 }
+
 
 export interface Report {
   id: string;
@@ -242,6 +251,7 @@ export interface SupportTicket {
 export interface StockTake {
     id: string;
     vendorId: string;
+    location: string; // e.g., 'Main Inventory', 'POS Terminal 1'
     status: 'in_progress' | 'completed' | 'cancelled';
     items: StockTakeItem[];
     createdAt: Date;
@@ -257,4 +267,16 @@ export interface StockTakeItem {
     expected: number;
     counted: number;
     variance: number;
+}
+
+export interface Plan {
+    id: string;
+    name: string;
+    price: number;
+    duration: string;
+    description: string;
+    features: { text: string; included: boolean }[];
+    isPopular: boolean;
+    buttonText: string;
+    variant: 'primary' | 'secondary';
 }

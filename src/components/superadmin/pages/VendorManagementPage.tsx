@@ -1,18 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { PageHeader } from '../../ui/PageHeader';
 import { Card, CardContent } from '../../ui/Card';
 import { Button } from '../../ui/Button';
-import { Search, Check, X, MoreVertical } from 'lucide-react';
-import { mockData } from '../../../lib/mockData';
+import { Search, Check, X, MoreVertical, Trash2, Ban } from 'lucide-react';
 import { Vendor } from '../../../types';
 import { cn } from '../../../lib/utils';
+import { useAuth } from '../../../hooks/useAuth';
+import toast from 'react-hot-toast';
 
 export function VendorManagementPage() {
-    const [vendors, setVendors] = useState<Vendor[]>(mockData.vendors);
+    const { users, updateUser, deleteUser } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
 
+    const vendors = useMemo(() => {
+        return users.filter(u => u.role === 'vendor') as Vendor[];
+    }, [users]);
+
     const handleApproval = (vendorId: string, isApproved: boolean) => {
-        setVendors(vendors.map(v => v.id === vendorId ? { ...v, isApproved } : v));
+        updateUser(vendorId, { isApproved });
+        toast.success(`Vendor ${isApproved ? 'approved' : 'approval revoked'}.`);
+    };
+
+    const handleDeactivate = (vendorId: string, isActive: boolean) => {
+        updateUser(vendorId, { isActive });
+        toast.success(`Vendor account has been ${isActive ? 'activated' : 'deactivated'}.`);
+    };
+
+    const handleDelete = (vendorId: string) => {
+        if (window.confirm('Are you sure you want to permanently delete this vendor and all their data? This action cannot be undone.')) {
+            deleteUser(vendorId);
+        }
     };
 
     const filteredVendors = vendors.filter(v =>
@@ -64,22 +81,30 @@ export function VendorManagementPage() {
                                         </td>
                                         <td className="px-6 py-4 capitalize">{vendor.subscriptionPlan}</td>
                                         <td className="px-6 py-4">
-                                            <span className={cn('px-2 py-1 text-xs font-semibold rounded-full capitalize', statusClasses[vendor.subscriptionStatus])}>
+                                            <span className={cn('px-2 py-1 text-xs font-semibold rounded-full capitalize', statusClasses[vendor.subscriptionStatus || 'inactive' as keyof typeof statusClasses])}>
                                                 {vendor.subscriptionStatus}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             {vendor.isApproved ? (
-                                                <span className="flex items-center text-green-600"><Check className="h-4 w-4 mr-1" /> Approved</span>
+                                                <span className="flex items-center text-green-600 font-medium"><Check className="h-4 w-4 mr-1" /> Approved</span>
                                             ) : (
                                                 <div className="flex items-center space-x-1">
-                                                    <Button size="sm" variant="ghost" className="text-green-600 hover:bg-green-100" onClick={() => handleApproval(vendor.id, true)}><Check className="h-4 w-4" /></Button>
-                                                    <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-100" onClick={() => handleApproval(vendor.id, false)}><X className="h-4 w-4" /></Button>
+                                                    <Button size="sm" className="bg-green-500 hover:bg-green-600" onClick={() => handleApproval(vendor.id, true)}>
+                                                        <Check className="h-4 w-4 mr-1" /> Approve
+                                                    </Button>
                                                 </div>
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                                            <div className="flex items-center space-x-1">
+                                                <Button variant="ghost" size="sm" onClick={() => handleDeactivate(vendor.id, !vendor.isActive)}>
+                                                    <Ban className="h-4 w-4" title={vendor.isActive ? 'Deactivate' : 'Activate'} />
+                                                </Button>
+                                                <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDelete(vendor.id)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

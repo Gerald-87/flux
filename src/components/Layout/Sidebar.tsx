@@ -18,11 +18,11 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Store
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../../hooks/useAuth';
 
-const menuItems = [
+const vendorMenuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: ShoppingCart, label: 'POS Terminal', path: '/pos' },
   { icon: Receipt, label: 'Sales', path: '/sales' },
@@ -40,6 +40,16 @@ const menuItems = [
   { icon: Settings, label: 'Settings', path: '/settings' }
 ];
 
+const cashierMenuItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: ShoppingCart, label: 'POS Terminal', path: '/pos' },
+  { icon: Receipt, label: 'Sales', path: '/sales' },
+  { icon: Clipboard, label: 'Stock Taking', path: '/stock-taking' },
+  { icon: HelpCircle, label: 'Help / FAQ', path: '/help' },
+  { icon: Headphones, label: 'Support', path: '/support' },
+];
+
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
@@ -47,6 +57,9 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
+  const { user } = useAuth();
+
+  const menuItems = user?.role === 'cashier' ? cashierMenuItems : vendorMenuItems;
 
   return (
     <div className={cn(
@@ -54,16 +67,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       collapsed ? "w-16" : "w-64"
     )}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <div className={cn("flex items-center space-x-2", collapsed && "justify-center")}>
-          <Store className="h-8 w-8 text-blue-600" />
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between h-[69px]">
+        <div className={cn("flex items-center space-x-2", collapsed && "justify-center w-full")}>
           {!collapsed && (
             <span className="text-xl font-bold text-gray-900">FluxPOS</span>
           )}
         </div>
         <button
           onClick={onToggle}
-          className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+          className={cn("p-1 rounded-lg hover:bg-gray-100 transition-colors", collapsed && "absolute left-1/2 -translate-x-1/2 top-[76px] bg-white border rounded-full shadow-md")}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4 text-gray-500" />
@@ -83,6 +95,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <NavLink
               key={item.path}
               to={item.path}
+              title={item.label}
               className={cn(
                 "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors group",
                 collapsed ? "justify-center" : "",
